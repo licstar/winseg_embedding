@@ -241,24 +241,36 @@ int readFile(const char *name, double *A, int size){
 	return len;
 }
 
+const int chk_valid_size = 1000000;
+data_t *chk_valid_pointer[chk_valid_size];
+int chk_valid_center[chk_valid_size];
+
 double checkSet(data_t *data, int N){
 	int hw = (window_size-1)/2;
 
+	for(int i = 0; i < chk_valid_size; i++){
+		int s = rand() % N;
+		data_t *positive = data + s * window_size;
+		chk_valid_pointer[i] = positive;
+
+		int center = 0;
+		while(center != 0 && center != 2 && center != positive[hw].word){
+			center = rand() % words.element_num;
+		}
+		chk_valid_center[i] = center;
+	}
+
 	double ret = 0;
 	#pragma omp parallel for schedule(dynamic) num_threads(thread_num)
-	for(int s = 0; s < N; s++){
+	for(int i = 0; i < chk_valid_size; i++){
 		data_t negative[10]; //要比window_size大
-		data_t *positive = data + s * window_size;
+		data_t *positive = chk_valid_pointer[i];
 
 		//生成负样本
 		for(int j = 0; j < window_size; j++){
 			negative[j] = positive[j];
 		}
-		int center = 0;
-		while(center != 0 && center != 2 && center != positive[hw].word){
-			center = rand() % words.element_num;
-		}
-		negative[hw].word = center;
+		negative[hw].word = chk_valid_center[i];
 
 		double tv = checkCase(positive, negative);
 
@@ -267,7 +279,7 @@ double checkSet(data_t *data, int N){
 			ret += tv;
 		}
 	}
-	return ret;
+	return ret / chk_valid_size;
 }
 
 bool readParaFiles(){
@@ -319,9 +331,9 @@ double check(double training_result){
 
 	writeParaFiles(model_name);
 
-	double fret = ret/vN + ps/pnum*lambda/2;
+	double fret = ret + ps/pnum*lambda/2;
 	printf("para:%lf, train: %.16lf, valid: %.16lf, time:%.1lf\n",
-		ps/pnum/2, training_result/1000000, ret/vN,
+		ps/pnum/2, training_result/1000000, ret,
 		getTime()-time_start);
 	fflush(stdout);
 	return fret;
@@ -400,17 +412,17 @@ int main(int argc, char **argv){
 	B = new double[H*input_size];
 	gB = new double[H*input_size];
 
-	if(!readParaFiles()){
-		for(int i = 0; i < H; i++){
-			A[i] = (nextDouble()-0.5) / sqrt(H);
-		}
-		for(int i = 0; i < H * input_size; i++){
-			B[i] = (nextDouble()-0.5) /sqrt(input_size);
-		}
-		for(int i = 0; i < words.size; i++){
-			words.value[i] = (nextDouble()-0.5);
-		}
+	for(int i = 0; i < H; i++){
+		A[i] = (nextDouble()-0.5) / sqrt(H);
 	}
+	for(int i = 0; i < H * input_size; i++){
+		B[i] = (nextDouble()-0.5) /sqrt(input_size);
+	}
+	for(int i = 0; i < words.size; i++){
+		words.value[i] = (nextDouble()-0.5);
+	}
+	//先初始化，然后尝试读一下参数，有就覆盖
+	readParaFiles();
 
 	time_start = getTime();
 
@@ -441,7 +453,7 @@ int main(int argc, char **argv){
 		data_t negative[10]; //要比window_size大
 		int hw = (window_size-1)/2;
 		training_result = 0;
-		for(int i = 0; i < 1000000; i++){
+		for(int i = 0; i < 10000000; i++){
 			int s = rand()%N; //选取一个正样本
 
 			data_t *positive = data + s * window_size;
@@ -459,7 +471,7 @@ int main(int argc, char **argv){
 			training_result += checkCase(positive, negative, true);
 
 			if ((i%1000)==0){
-			//	printf("%citer: %3d, alpha:%.10lf,                train: %.16f, Progress: %.2f%%, Pairs/sec: %.1f ", 13, iter, alpha, training_result/i, 100.*i/1000000, i/(getTime()-lastTime));
+			//	printf("%citer: %3d, alpha:%.10lf,                train: %.16f, Progress: %.2f%%, Pairs/sec: %.1f ", 13, iter, alpha, training_result/i, 100.*i/10000000, i/(getTime()-lastTime));
 			}
 		}
 		//printf("%c", 13);
