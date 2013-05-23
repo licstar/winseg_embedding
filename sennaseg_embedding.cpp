@@ -169,7 +169,7 @@ double calcNet(data_t *id, double *x, double *h){
 	for(int j = 0; j < H; j++){
 		ret += h[j] * A[j];
 	}
-	return ret;
+	return tanh(ret);
 }
 
 void bpNet(data_t *id, double *x, double *h, double dy){
@@ -219,8 +219,8 @@ double checkCase(data_t *positive, data_t *negative, bool gd = false){
 	double ret = max(0.0, 1-vp+vn);
 
 	if(gd && 1-vp+vn>0){ //修改参数
-		bpNet(positive, xPositive, hPositive, 1);
-		bpNet(positive, xNegative, hPositive, -1);
+		bpNet(positive, xPositive, hPositive, 1*(1-vp*vp));
+		bpNet(positive, xNegative, hPositive, -1*(1-vn*vn));
 	}
 	return ret;
 }
@@ -270,6 +270,31 @@ double checkSet(data_t *data, int N){
 	return ret;
 }
 
+bool readParaFiles(){
+	char fname[100];
+	int size = 0;
+	sprintf(fname, "%s_A", model_name);
+	size += readFile(fname, A, H);
+	sprintf(fname, "%s_B", model_name);
+	size += readFile(fname, B, H*input_size);
+	sprintf(fname, "%s_w", model_name);
+	size += readFile(fname, words.value, words.size);
+	if(size > 0)
+		return true;
+	else
+		return false;
+}
+
+void writeParaFiles(const char *model_name){
+	char fname[100];
+	sprintf(fname, "%s_A", model_name);
+	writeFile(fname, A, H);
+	sprintf(fname, "%s_B", model_name);
+	writeFile(fname, B, H*input_size);
+	sprintf(fname, "%s_w", model_name);
+	writeFile(fname, words.value, words.size);
+}
+
 //检查正确率和似然
 //返回值是似然
 double check(double training_result){
@@ -292,34 +317,14 @@ double check(double training_result){
 		ps += words.value[i]*words.value[i];
 	}
 
-	sprintf(fname, "%s_A", model_name);
-	writeFile(fname, A, H);
-	sprintf(fname, "%s_B", model_name);
-	writeFile(fname, B, H*input_size);
-	sprintf(fname, "%s_w", model_name);
-	writeFile(fname, words.value, words.size);
+	writeParaFiles(model_name);
 
-	double fret = -ret/N + ps/pnum*lambda/2;
+	double fret = ret/vN + ps/pnum*lambda/2;
 	printf("para:%lf, train: %.16lf, valid: %.16lf, time:%.1lf\n",
 		ps/pnum/2, training_result/1000000, ret/vN,
 		getTime()-time_start);
 	fflush(stdout);
 	return fret;
-}
-
-bool readParaFiles(){
-	char fname[100];
-	int size = 0;
-	sprintf(fname, "%s_A", model_name);
-	size += readFile(fname, A, H);
-	sprintf(fname, "%s_B", model_name);
-	size += readFile(fname, B, H*input_size);
-	sprintf(fname, "%s_w", model_name);
-	size += readFile(fname, words.value, words.size);
-	if(size > 0)
-		return true;
-	else
-		return false;
 }
 
 unsigned long get_file_size(const char *filename){
@@ -409,13 +414,27 @@ int main(int argc, char **argv){
 
 	time_start = getTime();
 
-	//double lastLH = 1e100;
+	double lastLH = 1e100;
 	double training_result = 0;
+	double bestH = 1e100;
 	while(1){
 		//计算正确率
-		printf("iter: %3d, ", iter);
-		//double LH = check();
-		check(training_result);
+		printf("iter: %3d, alpha:%.10lf, ", iter, alpha);
+		double LH = check(training_result);
+
+		//保存最佳参数
+		if(LH < bestH){
+			char fname[100];
+			sprintf(fname, "%s_%d", model_name, iter);
+			writeParaFiles(fname);
+			bestH = LH;
+		}
+
+		/*if(LH > lastLH){
+			alpha *= 0.5;
+		}
+		lastLH = LH;*/
+
 		iter++;
 
 		double lastTime = getTime();
@@ -440,10 +459,10 @@ int main(int argc, char **argv){
 			training_result += checkCase(positive, negative, true);
 
 			if ((i%1000)==0){
-				printf("%citer: %3d,                train: %.16f, Progress: %.2f%%, Pairs/sec: %.1f ", 13, iter, training_result/i, 100.*i/1000000, i/(getTime()-lastTime));
+			//	printf("%citer: %3d, alpha:%.10lf,                train: %.16f, Progress: %.2f%%, Pairs/sec: %.1f ", 13, iter, alpha, training_result/i, 100.*i/1000000, i/(getTime()-lastTime));
 			}
 		}
-		printf("%c", 13);
+		//printf("%c", 13);
 	}
 	return 0;
 }
