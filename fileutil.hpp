@@ -101,14 +101,43 @@ bool operator ==(const data_t &a, const data_t &b){
 	return a.word == b.word;
 }
 
+void addLineData(vector<vector<data_t> > &sortData, vector<data_t> &vec, int *specialCount){
+	data_t padding; //这个想办法初始化一下
+	padding.word = 2;
+	
+	int hw = (window_size-1)/2;
+
+	for(int j = 0; j < (int)vec.size(); j++){
+		vector<data_t> line(window_size);
+		for(int k = hw; k > 0; k--){
+			if(j-k >= 0){
+				line[hw - k] = vec[j-k];
+			}else{
+				line[hw - k] = padding; //PADDING
+			}
+		}
+		for(int k = 1; k <= hw; k++){
+			if(j+k < (int)vec.size()){
+				line[hw + k] = vec[j+k];
+			}else{
+				line[hw + k] = padding; //PADDING
+			}
+		}
+		line[hw] = vec[j];
+		if(vec[j].word < 6)
+			specialCount[vec[j].word]++;
+		sortData.push_back(line);
+	}
+}
+
 void readAllData(const char *file, int window_size, data_t *&data, int &N){
-	vector<vector<data_t > > mydata;
+	//vector<vector<data_t > > mydata;
 	FILE *fi=fopen(file, "rb");
 
 	vector<data_t> line;
 
-	data_t padding; //这个想办法初始化一下
-	padding.word = 2;
+	vector<vector<data_t> > sortData;
+	int specialCount[6]={0};
 
 	//读取数据
 	N = 0;
@@ -119,44 +148,14 @@ void readAllData(const char *file, int window_size, data_t *&data, int &N){
 
 		if(dt.word == 0){
 			line.pop_back();
-			mydata.push_back(line);
+			//mydata.push_back(line);
+			addLineData(sortData, line, specialCount);
+
 			N += line.size();
 			line.clear();
 		}
 	}
 	fclose(fi);
-
-
-	//格式转换
-	int hw = (window_size-1)/2;
-
-	vector<vector<data_t> > sortData;
-	int specialCount[6]={0};
-
-	for(size_t i = 0, offset=0; i < mydata.size(); i++){
-		vector<data_t> &vec = mydata[i];
-		for(int j = 0; j < (int)vec.size(); j++, offset++){
-			vector<data_t> line(5);
-			for(int k = hw; k > 0; k--){
-				if(j-k >= 0){
-					line[hw - k] = vec[j-k];
-				}else{
-					line[hw - k] = padding; //PADDING
-				}
-			}
-			for(int k = 1; k <= hw; k++){
-				if(j+k < (int)vec.size()){
-					line[hw + k] = vec[j+k];
-				}else{
-					line[hw + k] = padding; //PADDING
-				}
-			}
-			line[hw] = vec[j];
-			if(vec[j].word < 6)
-				specialCount[vec[j].word]++;
-			sortData.push_back(line);
-		}
-	}
 
 	printf("data: N(words):%d, ", N);
 	printf("unknown:%d number:%d letter:%d numletter:%d\n", specialCount[1], specialCount[3], specialCount[4], specialCount[5]);

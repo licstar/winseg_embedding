@@ -378,7 +378,7 @@ int main(int argc, char **argv){
 	model_name = argv[0];
 	train_file = argv[1];
 
-	window_size = 5;
+	window_size = 9;
 	vector_size = 50;
 	input_size = window_size * vector_size;
 
