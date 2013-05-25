@@ -254,7 +254,7 @@ double checkSet(data_t *data, int N){
 		chk_valid_pointer[i] = positive;
 
 		int center = 0;
-		while(center != 0 && center != 2 && center != positive[hw].word){
+		while(center == 0 || center == 2 || center == positive[hw].word){
 			center = rand() % words.element_num;
 		}
 		chk_valid_center[i] = center;
@@ -378,7 +378,7 @@ int main(int argc, char **argv){
 	model_name = argv[0];
 	train_file = argv[1];
 
-	window_size = 9;
+	window_size = 5;
 	vector_size = 50;
 	input_size = window_size * vector_size;
 
@@ -463,7 +463,7 @@ int main(int argc, char **argv){
 				negative[j] = positive[j];
 			}
 			int center = 0;
-			while(center != 0 && center != 2 && center != positive[hw].word){
+			while(center == 0 || center == 2 || center == positive[hw].word){
 				center = rand() % words.element_num;
 			}
 			negative[hw].word = center;
