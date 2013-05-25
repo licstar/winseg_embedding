@@ -220,7 +220,7 @@ double checkCase(data_t *positive, data_t *negative, bool gd = false){
 
 	if(gd && 1-vp+vn>0){ //修改参数
 		bpNet(positive, xPositive, hPositive, 1*(1-vp*vp));
-		bpNet(positive, xNegative, hPositive, -1*(1-vn*vn));
+		bpNet(negative, xNegative, hNegative, -1*(1-vn*vn));
 	}
 	return ret;
 }
@@ -283,7 +283,7 @@ double checkSet(data_t *data, int N){
 }
 
 bool readParaFiles(){
-	char fname[100];
+	char fname[1000];
 	int size = 0;
 	sprintf(fname, "%s_A", model_name);
 	size += readFile(fname, A, H);
@@ -453,7 +453,7 @@ int main(int argc, char **argv){
 		data_t negative[10]; //要比window_size大
 		int hw = (window_size-1)/2;
 		training_result = 0;
-		for(int i = 0; i < 10000000; i++){
+		for(int i = 0; i < 1000000; i++){
 			int s = rand()%N; //选取一个正样本
 
 			data_t *positive = data + s * window_size;
@@ -471,7 +471,7 @@ int main(int argc, char **argv){
 			training_result += checkCase(positive, negative, true);
 
 			if ((i%1000)==0){
-			//	printf("%citer: %3d, alpha:%.10lf,                train: %.16f, Progress: %.2f%%, Pairs/sec: %.1f ", 13, iter, alpha, training_result/i, 100.*i/10000000, i/(getTime()-lastTime));
+				//printf("%citer: %3d, alpha:%.10lf,                train: %.16f, Progress: %.2f%%, Pairs/sec: %.1f ", 13, iter, alpha, training_result/i, 100.*i/1000000, i/(getTime()-lastTime));
 			}
 		}
 		//printf("%c", 13);
